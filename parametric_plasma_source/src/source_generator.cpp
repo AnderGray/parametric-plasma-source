@@ -8,6 +8,8 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 
+#include <pugixml.hpp>
+
 namespace source_generator
 {
   void print_settings(std::string path_source_library, std::string source_parameters)
@@ -141,7 +143,17 @@ int main(int argc, char* argv[])
   }
 
   std::cout << "Sampling source:" << std::endl;
-  openmc::model::external_sources.push_back(std::make_unique<openmc::CustomSourceWrapper>(path_source_library, source_parameters));
+  
+    // Construct XML node in memory to simulate <source> config
+  pugi::xml_document doc;
+  auto src_node = doc.append_child("source");
+  src_node.append_child("library").text().set(path_source_library.c_str());
+  src_node.append_child("parameters").text().set(source_parameters.c_str());
+
+  // Create the source wrapper with the constructed node
+  openmc::model::external_sources.push_back(
+    std::make_unique<openmc::CompiledSourceWrapper>(src_node));
+
   openmc::calculate_work();
   openmc::allocate_banks();
   openmc::initialize_source();
